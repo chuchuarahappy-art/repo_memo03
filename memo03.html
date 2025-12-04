@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>myMemoPad-複数対応</title>
+  <link rel="stylesheet" href="css/style_new.css">
+</head>
+
+<body>
+  <header>
+    <h1>myMemoPad-複数対応</h1>
+  </header>
+
+  <main>
+    <div id="list_area">
+        <h2>メモ一覧</h2>
+        <ul class="controls">
+            <li id="new_memo"> 📝 New Memo</li>
+        </ul>
+        <ul id="memo_list">
+        </ul>
+    </div>
+    
+    <div id="edit_area">
+        <input type="text" id="input" placeholder="メモのタイトルを入力">
+        <textarea id="text_area" placeholder="メモの内容を入力"></textarea>
+
+         <ul class="controls">
+          <li id="save"> 💾 Save</li>
+          <li id="clear"> 🗑️ Delete Memo</li>
+         </ul>
+    </div>
+
+  </main>
+
+  <footer>
+    <small>G's</small>
+  </footer>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script>
+
+    //複数メモ対応のロジックを追加
+    const STORAGE_KEY = "memo_list_data";
+    let currentMemoIndex = -1;
+
+    //LocalStorageからのメモの配列を取得する
+    function getMemoList(){
+        const json = localStorage.getItem(STORAGE_KEY);
+        return json ? JSON.parse(json) : [];
+    }
+
+    //LocalStorageにメモの配列を保存する
+    function saveMemoList(memoList){
+        const json = JSON.stringify(memoList);
+        localStorage.setItem(STORAGE_KEY, json);
+    }
+
+    //メモ一覧を画面に表示
+    function renderMemoList(){
+        const memoList = getMemoList();
+        let html ="";
+
+        memoList.forEach((memo,index)=> {
+            const activeClass = index === currentMemoIndex ? "active-selected" : "";
+            html += `<li data-index="${index}" class="${activeClass}">${memo.title ||"(無題のメモ)"}</li>`;
+        });
+
+        $("#memo_list").html(html);
+
+        //メモ一覧に設定
+        $("#memo_list li").on("click", function(){
+            const index = $(this).data("index");
+            loadMemo(index);
+        });
+    }
+
+    //指定されたインデックスメモを編集エリアにロード
+    function loadMemo(index){
+        const memoList = getMemoList();
+        if(index >= 0 && index < memoList.length){
+            const memo = memoList[index];
+            $("#input").val(memo.title);
+            $("#text_area").val(memo.text);
+            currentMemoIndex = index;
+            //ハイライトを更新
+            $("#memo_list li").removeClass("active-selected");
+            $(`li[data-index="${index}"]`).addClass("active-selected");
+        }
+    }
+
+    //新規メモ作成ボタン
+    $("#new_memo").on("click", function(){
+        //入力をクリア
+        $("#input").val("");
+        $("#text_area").val("")
+        //新規作成モードに設定
+        currentMemoIndex = -1;
+        $("#memo_list li").removeClass("active-selected");
+        $("#input").focus();
+    });
+
+    //保存
+    $("#save").on("click",function(){
+        const memoList = getMemoList();
+        const newTitle = $("#input").val() ||"(無題のメモ)"
+        const newText = $("#text_area").val();
+
+        const newMemo ={
+            title: newTitle,
+            text:newText,
+            timestamp: Date.now()
+        };
+
+        if(currentMemoIndex === -1){
+            memoList.push(newMemo);
+            currentMemoIndex = memoList.length -1;
+            alert("新しいメモを保存しました！");
+        } else {
+            memoList[currentMemoIndex] = newMemo;
+            alert(`「${newTitle}」を更新しました！`);
+        }
+
+        saveMemoList(memoList);
+        renderMemoList();
+        //保存後、アクティブ状態を維持
+        $(`li[data-index="${currentMemoIndex}"]`).addClass("active-selected");
+    });
+
+    //削除処理
+    $("#clear").on("click",function(){
+        if(currentMemoIndex === -1){
+            alert("削除するメモが選択されていません。");
+            return;
+        }
+
+        const memoList = getMemoList();
+        const titleToDelete = memoList[currentMemoIndex].title;
+        if(!confirm(`「${titleToDelete}」を削除してもよろしいですか？`)){
+            return;
+        }
+
+    //配列から該当のメモを削除
+    memoList.splice(currentMemoIndex, 1);
+    saveMemoList(memoList);
+
+    //編集エリアをクリアし、インデックスをリセット
+    $("#input").val("");
+    $("#text_area").val("");
+    currentMemoIndex = -1;
+
+    renderMemoList();
+    alert("メモを削除しました。");
+    });
+
+    //画面起動時の初期処理
+    $(document).ready(function(){
+        const memoList = getMemoList();
+        if(memoList.length > 0) {
+            loadMemo(0);
+        }else{
+            currentMemoIndex = -1;
+        }
+        renderMemoList();
+    });
+ 
+  </script>
+
+</body>
+
+</html>
